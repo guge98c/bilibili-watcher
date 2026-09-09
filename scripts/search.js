@@ -62,7 +62,7 @@ async function fetchVideos(mid, imgKey, subKey, maxRetry = 2) {
   for (let attempt = 1; attempt <= maxRetry; attempt++) {
     try {
       const params = signParams(
-        { mid, ps: 30, pn: 1, order: 'pubdate' },
+        { mid, ps: 25, pn: 1, order: 'pubdate' },
         imgKey,
         subKey
       );
