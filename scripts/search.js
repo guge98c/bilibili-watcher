@@ -1,25 +1,48 @@
 import axios from 'axios';
 import { getWbiKeys, signParams } from './wbi.js';
 
-// BILI_MID 配置成逗号分隔多个 UID：316183842,13416784,...
-const MIDS = (process.env.BILI_MID || '').split(',').map(s => s.trim()).filter(Boolean);
-const N8N_URL = process.env.N8N_WEBHOOK_URL;
-const COOKIE = process.env.BILI_COOKIE;
+// ==================== 硬编码配置（直接改这里）====================
+const MIDS = [
+  '3691012801169602',
+  '316183842',
+  '13416784',
+  '3546884870244925',
+  '3546830396721763',
+  '28554995',
+  '474921808',
+  '28357052',
+  '14848367',
+  '67079745',
+  '14739873',
+  '1387592680',
+  '14842663',
+  '37663924',
+  '520155988',
+  '119801456',
+  '598464467',
+  '615957867',
+  '356634017',
+  '1815948385',
+  '473168952',
+].map(s => s.trim()).filter(Boolean);
 
-// ---------- 启动前 Cookie 校验 ----------
+const N8N_URL = 'http://ai.oobb.qzz.io:5678/webhook-test/bilibili-watcher';
+
+const COOKIE = 'buvid3=D3E23961-BFD5-5C64-DAF8-1371CDB8261780071infoc; buvid4=CE4467CA-4F93-3CEA-004A-9970DA36659082394-026060615-r4x7EIZOgb6tURYIJfBODg%3D%3D; SESSDATA=ceb9dce4%2C1804498821%2Cb3071%2A91CjBmJbvtk5CZel0x_HKzjIAdoism430ksv-wyQ59IiCx_rWZ-nLwf89QF7E28Oxh_twSVkVPeDYxSjhzMU9ocVExZ3ZXWl8yekgwcGdWdXdWOURJc1M2X2plRmcxeURLTzZDUWZlM2ZweGNEZE4xaG1kRlpaVFN0MlFlV3c4NkItdFBZOUd3QThBIIEC; bili_jct=59f22b08b79804f520aab06c8c1577df; DedeUserID=3706993527228838; DedeUserID__ckMd5=a2669e4df0efa26f';
+// =================================================================
+
+// ---------- Cookie 校验 ----------
 function validateCookie(cookie) {
   const required = ['buvid3', 'buvid4', 'SESSDATA', 'bili_jct', 'DedeUserID'];
   const missing = required.filter(k => !cookie.includes(`${k}=`));
   if (missing.length > 0) {
     console.error('===== Cookie 缺少关键字段 =====');
     console.error('缺少:', missing.join(', '));
-    console.error('请在浏览器登录 B 站后，F12 → Application → Cookies 中完整复制以下字段：');
-    console.error('  buvid3, buvid4, SESSDATA, bili_jct, DedeUserID');
     process.exit(1);
   }
 }
 
-// 请求头（Referer 与 space 接口匹配是关键）
+// 请求头（Referer 指向 space 页面，与接口匹配）
 function buildHeaders(mid) {
   return {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -27,7 +50,7 @@ function buildHeaders(mid) {
     'Origin': 'https://space.bilibili.com',
     'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'zh-CN,zh;q=0.9',
-    'Cookie': COOKIE,
+    'Cookie': cookie,
   };
 }
 
@@ -81,12 +104,8 @@ const allVideos = [];
 const failedMids = [];
 
 try {
-  if (MIDS.length === 0 || !N8N_URL || !COOKIE) {
-    console.error('缺少环境变量：BILI_MID / N8N_WEBHOOK_URL / BILI_COOKIE');
-    process.exit(1);
-  }
   validateCookie(COOKIE);
-  console.log(`环境变量检查通过，共 ${MIDS.length} 个 UP 主`);
+  console.log(`共 ${MIDS.length} 个 UP 主`);
   await sleep(2000 + Math.random() * 2000);
   const { imgKey, subKey } = await getWbiKeys(axios, buildHeaders(MIDS[0]));
   console.log('wbi keys 获取成功');
