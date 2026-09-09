@@ -26,7 +26,7 @@ const MIDS = [
   '473168952',
 ].map(s => s.trim()).filter(Boolean);
 
-const N8N_URL = 'https://ai.oobb.qzz.io/webhook-test/bilibili-watcher';
+const N8N_URL = 'https://ai.oobb.qzz.io/webhook/bilibili-watcher';
 
 const COOKIE = 'buvid3=D3E23961-BFD5-5C64-DAF8-1371CDB8261780071infoc; buvid4=CE4467CA-4F93-3CEA-004A-9970DA36659082394-026060615-r4x7EIZOgb6tURYIJfBODg%3D%3D; SESSDATA=ceb9dce4%2C1804498821%2Cb3071%2A91CjBmJbvtk5CZel0x_HKzjIAdoism430ksv-wyQ59IiCx_rWZ-nLwf89QF7E28Oxh_twSVkVPeDYxSjhzMU9ocVExZ3ZXWl8yekgwcGdWdXdWOURJc1M2X2plRmcxeURLTzZDUWZlM2ZweGNEZE4xaG1kRlpaVFN0MlFlV3c4NkItdFBZOUd3QThBIIEC; bili_jct=59f22b08b79804f520aab06c8c1577df; DedeUserID=3706993527228838; DedeUserID__ckMd5=a2669e4df0efa26f';
 // =================================================================
