@@ -2,7 +2,7 @@ name: Bilibili Watcher
 
 on:
   schedule:
-    - cron: '0 */11 * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -19,3 +21,10 @@ jobs:
           BILI_MID: ${{ secrets.BILI_MID }}
           BILI_COOKIE: ${{ secrets.BILI_COOKIE }}
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+      - name: Commit state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state/
+          git commit -m "chore: update state" --no-verify || echo "No changes to commit"
+          git push origin main
