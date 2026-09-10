@@ -122,10 +122,10 @@ async function fetchVideos(mid, imgKey, subKey, maxRetry = 2) {
 }
 
 // ---------- 增量过滤 ----------
-// 新视频 vs 状态水位线：
-//   - 时间比水位新  →  新视频
-//   - 时间相同但 bvid 不同 → 新视频
-//   - 时间等于或早于水位  → 停止扫描（列表按最新在前，后面都是旧视频）
+// 列表按发布时间倒序（最新的在前），逐条与水位置对比：
+//   - created > watermark.created       → 新视频，收下
+//   - created === watermark.created && bvid !== watermark.bvid → 同一秒不同视频，收下
+//   - 其他                              → 停止扫描（后面全是旧视频）
 function filterNewVideos(vlist, stateEntry) {
   const newVideos = [];
   for (const v of vlist) {
@@ -136,11 +136,14 @@ function filterNewVideos(vlist, stateEntry) {
       continue;
     }
     const stateCreated = Number(stateEntry.created) || 0;
-    const isNew = created > stateCreated || (created === stateCreated && v.bvid !== stateEntry.bvid);
-    if (isNew) {
+    if (created > stateCreated) {
+      // 时间比水位线新 → 新视频
+      newVideos.push(v);
+    } else if (created === stateCreated && v.bvid !== stateEntry.bvid) {
+      // 时间相同但 bvid 不同 → 新视频（同一秒发的另一条）
       newVideos.push(v);
     } else {
-      // 遇到水位线或旧视频，立即停止
+      // 时间等于或早于水位线 → 停止
       break;
     }
   }
@@ -148,14 +151,24 @@ function filterNewVideos(vlist, stateEntry) {
 }
 
 // ---------- 提交状态到 Git ----------
+// 4 个前提条件：
+//   1. workflow 有 permissions: contents: write（否则 git push 403）
+//   2. 先执行 git config 配置身份（否则 git commit 报 "Please tell me who you are"）
+//   3. git diff --cached --quiet || git commit（无变化时不抛错）
+//   4. git push origin HEAD（不写死 main，推当前分支）
 function commitState() {
   try {
+    execSync('git config user.name "github-actions"', { stdio: 'pipe' });
+    execSync('git config user.email "actions@github.com"', { stdio: 'pipe' });
     execSync('git add state/', { stdio: 'pipe' });
-    execSync("git commit -m 'chore: update state' --no-verify", { stdio: 'pipe' });
-    execSync('git push origin main', { stdio: 'pipe' });
-    console.log('状态已提交并推送到仓库');
-  } catch (err) {
-    console.error('提交状态失败（非致命，不影响本次运行）:', err.message.slice(0, 200));
+    // 无变化时 diff 返回 0，|| 短路跳过 commit，整体退出码为 0
+    execSync('git diff --cached --quiet || git commit -m "chore: update state" --no-verify', { stdio: 'pipe' });
+    // 推当前分支，不写死 main
+    execSync('git push origin HEAD', { stdio: 'pipe' });
+    console.log('状态已提交回仓库');
+  } catch (e) {
+    // 提交失败不致命：下次运行会重发同样的视频，n8n 的 processedBvids 会去重
+    console.error('状态提交失败（不影响本次数据）:', e.message.slice(0, 200));
   }
 }
 
@@ -255,7 +268,10 @@ try {
   console.log(`\n===== 汇总 =====`);
   console.log(`共 ${allVideos.length} 条新视频，${failedMids.length} 个 UID 失败`);
 
-  // 有视频才发
+  // ★ 先发消息，再提交状态（顺序关键！）
+  // 先发 n8n → 后 commit：如果 commit 失败，水位线没推进，下次运行重发同样的视频
+  //   → n8n 的 processedBvids 拦住，不丢数据 ✅
+  // 先 commit → 后发 n8n：如果 n8n 挂了，水位线已推进，这批视频永远不会再发 → 数据丢失 ❌
   if (allVideos.length > 0) {
     await axios.post(N8N_URL, { videos: allVideos }, { timeout: 30000 });
     console.log(`已发送 ${allVideos.length} 条视频到 n8n`);
