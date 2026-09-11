@@ -153,24 +153,31 @@ function filterNewVideos(vlist, stateEntry) {
 // ---------- 提交状态到 Git ----------
 // 4 个前提条件：
 //   1. workflow 有 permissions: contents: write（否则 git push 403）
-//   2. 先执行 git config 配置身份（否则 git commit 报 "Please tell me who you are"）
-//   3. git diff --cached --quiet || git commit（无变化时不抛错）
-//   4. git push origin HEAD（不写死 main，推当前分支）
+//   2. Actions runner 上需要 git 身份配置
+//   3. "nothing to commit" 不会抛异常（用 || 短路）
+//   4. git push origin HEAD 推当前分支，不写死 main
 function commitState() {
   try {
-    execSync('git config user.name "github-actions"', { stdio: 'pipe' });
-    execSync('git config user.email "actions@github.com"', { stdio: 'pipe' });
+    // 条件2：配置 git 身份
+    execSync('git config user.name "github-actions[bot]"', { stdio: 'pipe' });
+    execSync('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"', { stdio: 'pipe' });
     execSync('git add state/', { stdio: 'pipe' });
-    // 无变化时 diff 返回 0，|| 短路跳过 commit，整体退出码为 0
+    // 条件3：没有变化时 diff 返回 0，|| 短路跳过 commit，整体退出码为 0
     execSync('git diff --cached --quiet || git commit -m "chore: update state" --no-verify', { stdio: 'pipe' });
-    // 推当前分支，不写死 main
-    execSync('git push origin HEAD', { stdio: 'pipe' });
+    // 条件4：推当前分支，不写死 main
+    const token = process.env.GITHUB_TOKEN || '';
+    if (!token) {
+      console.error('状态提交失败：未找到 GITHUB_TOKEN');
+      return;
+    }
+    execSync(`git push https://x-access-token:${token}@github.com/guge98c/bilibili-watcher.git HEAD`, { stdio: 'pipe' });
     console.log('状态已提交回仓库');
   } catch (e) {
     // 提交失败不致命：下次运行会重发同样的视频，n8n 的 processedBvids 会去重
     console.error('状态提交失败（不影响本次数据）:', e.message.slice(0, 200));
   }
 }
+
 
 // ========== 主流程 ==========
 const allVideos = [];
