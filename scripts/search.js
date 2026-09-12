@@ -27,6 +27,7 @@ const MIDS = [
   '356634017',
   '1815948385',
   '473168952',
+  '291403256',
 ].map(s => s.trim()).filter(Boolean);
 
 const N8N_URL = 'https://ai.oobb.qzz.io/webhook/bilibili-watcher';
