@@ -18,4 +18,4 @@ buvid3, buvid4, SESSDATA, bili_jct, DedeUserID
 ## 运行
 
 本地：node scripts/search.js
-自动：GitHub Actions 每6小时执行一次
+自动：GitHub Actions 每3天执行一次
